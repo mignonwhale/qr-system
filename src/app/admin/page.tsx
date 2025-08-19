@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import {useEffect, useState} from 'react'
 import StudentForm from '@/components/StudentForm'
 import StudentList from '@/components/StudentList'
-import { Student, StudentFormData, ApiResponse } from '@/types'
+import {ApiResponse, Student, StudentFormData} from '@/types'
 
 /**
  * QR 시스템 관리자 페이지 컴포넌트
@@ -15,6 +15,10 @@ export default function AdminPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
+  const [formData, setFormData] = useState<StudentFormData>({
+    name: '',
+    email: '',
+  })
 
   useEffect(() => {
     fetchStudents()
@@ -147,70 +151,69 @@ export default function AdminPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 p-8">
-      <div className="max-w-7xl mx-auto">
-        {/* 헤더 */}
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">QR 시스템 관리</h1>
-          <p className="text-gray-600">
-            학생을 추가하면 자동으로 QR 코드를 통해 출입을 관리할 수 있습니다.
-          </p>
-        </div>
 
-        {/* 알림 메시지 */}
-        {error && (
-          <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
-            <div className="flex items-center">
-              <div className="text-red-800">
-                <strong>오류:</strong> {error}
-              </div>
-              <button
-                onClick={() => setError(null)}
-                className="ml-auto text-red-600 hover:text-red-800"
-              >
-                ✕
-              </button>
+        <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-6">
+          <div className="max-w-6xl mx-auto space-y-8">
+            {/* Header */}
+            <div className="text-center space-y-4">
+              <h1 className="text-3xl font-bold text-slate-800">QR 시스템 관리</h1>
+              <p className="text-slate-600">학생들의 출석과 QR 코드를 효율적으로 관리하세요</p>
             </div>
-          </div>
-        )}
 
-        {success && (
-          <div className="mb-6 bg-green-50 border border-green-200 rounded-lg p-4">
-            <div className="flex items-center">
-              <div className="text-green-800">
-                <strong>성공:</strong> {success}
+          {/* 알림 메시지 */}
+          {error && (
+            <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
+              <div className="flex items-center">
+                <div className="text-red-800">
+                  <strong>오류:</strong> {error}
+                </div>
+                <button
+                  onClick={() => setError(null)}
+                  className="ml-auto text-red-600 hover:text-red-800"
+                >
+                  ✕
+                </button>
               </div>
-              <button
-                onClick={() => setSuccess(null)}
-                className="ml-auto text-green-600 hover:text-green-800"
-              >
-                ✕
-              </button>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* 메인 컨텐츠 */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* 학생 추가 폼 - 왼쪽 */}
-          <div className="lg:col-span-1">
-            <StudentForm 
-              onSubmit={handleAddStudent}
-              isLoading={isLoading}
-            />
-          </div>
+          {success && (
+            <div className="mb-6 bg-green-50 border border-green-200 rounded-lg p-4">
+              <div className="flex items-center">
+                <div className="text-green-800">
+                  <strong>성공:</strong> {success}
+                </div>
+                <button
+                  onClick={() => setSuccess(null)}
+                  className="ml-auto text-green-600 hover:text-green-800"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+          )}
 
-          {/* 학생 목록 - 오른쪽 */}
-          <div className="lg:col-span-2">
-            <StudentList
-              students={students}
-              onDelete={handleDeleteStudent}
-              onDownloadQR={handleDownloadQR}
-              isLoading={isLoading}
-            />
+          {/* 메인 컨텐츠 */}
+          <div className="grid lg:grid-cols-4 gap-8">
+            {/* 학생 추가 폼 - 왼쪽 */}
+            <div className="lg:col-span-1">
+              <StudentForm
+                onSubmit={handleAddStudent}
+                isLoading={isLoading}
+              />
+            </div>
+
+            {/* 학생 목록 - 오른쪽 */}
+            <div className="lg:col-span-3">
+              <StudentList
+                students={students}
+                onDelete={handleDeleteStudent}
+                onDownloadQR={handleDownloadQR}
+                isLoading={isLoading}
+              />
+            </div>
           </div>
         </div>
       </div>
-    </div>
-  )
+  );
 }

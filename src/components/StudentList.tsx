@@ -1,8 +1,11 @@
 'use client'
 
-import { Student } from '@/types'
-import Button from './ui/Button'
-import Card, { CardHeader, CardContent } from './ui/Card'
+import {Student} from '@/types'
+import {Button} from './ui/Button'
+import {Card, CardContent, CardDescription, CardHeader, CardTitle} from './ui/Card'
+import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow} from './ui/Table'
+import {Calendar, Mail, QrCode, Trash2} from 'lucide-react'
+import {Badge} from "@/components/ui/Badge";
 
 interface StudentListProps {
   students: Student[]
@@ -42,84 +45,80 @@ export default function StudentList({
   }
 
   return (
-    <div className="bg-slate-700 text-white rounded-lg p-6">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold">학생 목록</h2>
-        <span className="bg-slate-600 text-white px-2 py-1 rounded text-sm">{students.length}</span>
-      </div>
-      <p className="text-slate-300 mb-6">등록된 학생의 정보와 QR 코드를 관리하세요.</p>
-      
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="text-slate-300 border-b border-slate-600">
-              <th className="text-left py-3 px-4">이름</th>
-              <th className="text-left py-3 px-4">이메일</th>
-              <th className="text-left py-3 px-4">마지막 접속</th>
-              <th className="text-center py-3 px-4">작업</th>
-            </tr>
-          </thead>
-          <tbody>
-            {students.map((student) => (
-              <tr key={student.id} className="border-b border-slate-600 hover:bg-slate-600/50">
-                <td className="py-3 px-4">
-                  <div className="flex items-center">
-                    <div className="w-2 h-2 bg-green-400 rounded-full mr-3"></div>
-                    <span className="text-white font-medium">{student.name}</span>
+      <Card className="shadow-lg">
+          <CardHeader className="bg-gradient-to-r from-slate-700 to-slate-800 text-white rounded-t-lg px-6 py-8">
+              <CardTitle className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                      <QrCode className="h-5 w-5" />
+                      학생 목록
                   </div>
-                </td>
-                
-                <td className="py-3 px-4">
-                  <div className="flex items-center text-slate-300">
-                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                    </svg>
-                    {student.email}
-                  </div>
-                </td>
-                
-                <td className="py-3 px-4">
-                  <div className="flex items-center text-slate-300">
-                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    {student.lastAccessAt 
-                      ? new Date(student.lastAccessAt).toLocaleDateString('ko-KR', { 
-                          month: 'numeric', 
-                          day: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        })
-                      : '없음'
-                    }
-                  </div>
-                </td>
-                
-                <td className="py-3 px-4">
-                  <div className="flex justify-center space-x-2">
-                    <button
-                      onClick={() => onDownloadQR(student)}
-                      disabled={isLoading}
-                      className="bg-slate-600 hover:bg-slate-500 text-white px-3 py-1 rounded text-xs font-medium transition-colors disabled:opacity-50"
-                      title="QR 코드 다운로드"
-                    >
-                      QR 설정
-                    </button>
-                    <button
-                      onClick={() => onDelete(student.id)}
-                      disabled={isLoading}
-                      className="bg-red-600 hover:bg-red-500 text-white px-3 py-1 rounded text-xs font-medium transition-colors disabled:opacity-50"
-                      title="학생 삭제"
-                    >
-                      🗑️
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
+                  <Badge variant="secondary" className="bg-white text-slate-800 px-3 py-1">
+                      {students.length}명
+                  </Badge>
+              </CardTitle>
+              <CardDescription className="text-slate-200 mt-2">
+                  등록된 학생들의 정보와 QR 코드를 관리하세요
+              </CardDescription>
+          </CardHeader>
+          <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                  <Table>
+                      <TableHeader>
+                          <TableRow className="bg-slate-50">
+                              <TableHead className="py-3 px-6">이름</TableHead>
+                              <TableHead className="py-3 px-6">이메일</TableHead>
+                              <TableHead className="py-3 px-6">마지막 체크인</TableHead>
+                              <TableHead className="text-center py-3 px-6">작업</TableHead>
+                          </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                          {students.map((student) => (
+                              <TableRow key={student.id} className="hover:bg-slate-50/50">
+                                  <TableCell className="font-medium py-3 px-6">
+                                      <div className="flex items-center gap-3">
+                                          <span>{student.name}</span>
+                                      </div>
+                                  </TableCell>
+                                  <TableCell className="py-3 px-6">
+                                      <div className="flex items-center gap-2 text-slate-600">
+                                          <Mail className="h-4 w-4" />
+                                          <span>{student.email}</span>
+                                      </div>
+                                  </TableCell>
+                                  <TableCell className="py-3 px-6">
+                                      <div className="flex items-center gap-2 text-slate-600">
+                                          <Calendar className="h-4 w-4" />
+                                          <span>{student.createdAt}</span>
+                                      </div>
+                                  </TableCell>
+                                  <TableCell className="py-3 px-6">
+                                      <div className="flex items-center justify-center gap-3">
+                                          <Button
+                                              size="sm"
+                                              variant="outline"
+                                              onClick={() => onDownloadQR(student)}
+                                              className="h-9 px-4"
+                                          >
+                                              <QrCode className="h-4 w-4 mr-2" />
+                                              QR 생성
+                                          </Button>
+                                          <Button
+                                              size="sm"
+                                              variant="outline"
+                                              onClick={() => onDelete(student.id)}
+                                              className="h-9 px-3 text-red-600 hover:bg-red-50"
+                                          >
+                                              <Trash2 className="h-4 w-4" />
+                                          </Button>
+                                      </div>
+                                  </TableCell>
+                              </TableRow>
+                          ))}
+                      </TableBody>
+                  </Table>
+              </div>
+          </CardContent>
+      </Card>
+
   )
 }
