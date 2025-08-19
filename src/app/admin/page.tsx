@@ -3,7 +3,9 @@
 import {useEffect, useState} from 'react'
 import StudentForm from '@/components/StudentForm'
 import StudentList from '@/components/StudentList'
-import {ApiResponse, Student, StudentFormData} from '@/types'
+import {Student, StudentFormData} from '@/types'
+import {getStudents, addStudent, deleteStudent} from '@/lib/storage-local'
+import {generateQRCode, deleteQRCode} from '@/lib/qr'
 
 /**
  * QR 시스템 관리자 페이지 컴포넌트
@@ -15,29 +17,19 @@ export default function AdminPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
-  const [formData, setFormData] = useState<StudentFormData>({
-    name: '',
-    email: '',
-  })
 
   useEffect(() => {
     fetchStudents()
   }, [])
 
   /**
-   * 서버에서 학생 목록을 가져옵니다.
+   * localStorage에서 학생 목록을 가져옵니다.
    */
   const fetchStudents = async () => {
     try {
       setIsLoading(true)
-      const response = await fetch('/api/students')
-      const result: ApiResponse<Student[]> = await response.json()
-
-      if (result.success && result.data) {
-        setStudents(result.data)
-      } else {
-        setError(result.error || '학생 목록을 불러오는데 실패했습니다.')
-      }
+      const students = getStudents()
+      setStudents(students)
     } catch (error) {
       console.error('Error fetching students:', error)
       setError('학생 목록을 불러오는데 실패했습니다.')
@@ -56,28 +48,31 @@ export default function AdminPage() {
       setError(null)
       setSuccess(null)
 
-      const response = await fetch('/api/students', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData),
-      })
-
-      const result: ApiResponse<Student> = await response.json()
-
-      if (result.success && result.data) {
-        setStudents(prev => [...prev, result.data!])
-        setSuccess('학생이 성공적으로 추가되었습니다!')
-        
-        // 성공 메시지 자동 제거
-        setTimeout(() => setSuccess(null), 3000)
-      } else {
-        setError(result.error || '학생 추가에 실패했습니다.')
+      // localStorage에서 직접 학생 추가
+      const newStudent = addStudent(formData)
+      
+      // QR 코드 생성
+      try {
+        await generateQRCode(newStudent)
+      } catch (qrError) {
+        console.error('QR generation failed:', qrError)
+        // QR 생성 실패해도 학생은 이미 추가됨
       }
-    } catch (error) {
+
+      const updatedStudents = [...students, newStudent]
+      setStudents(updatedStudents)
+      setSuccess('학생이 성공적으로 추가되었습니다!')
+      
+      // 성공 메시지 자동 제거
+      setTimeout(() => setSuccess(null), 3000)
+    } catch (error: unknown) {
       console.error('Error adding student:', error)
-      setError('학생 추가에 실패했습니다.')
+      
+      if (error instanceof Error && error.message && error.message.includes('이미 존재합니다')) {
+        setError(error.message)
+      } else {
+        setError('학생 추가에 실패했습니다.')
+      }
     } finally {
       setIsLoading(false)
     }
@@ -97,20 +92,25 @@ export default function AdminPage() {
       setError(null)
       setSuccess(null)
 
-      const response = await fetch(`/api/students/${id}`, {
-        method: 'DELETE',
-      })
+      const success = deleteStudent(id)
+      
+      if (success) {
+        // QR 코드도 삭제
+        try {
+          deleteQRCode(id)
+        } catch (error) {
+          console.warn('Failed to delete QR data:', error)
+          // QR 삭제 실패는 무시
+        }
 
-      const result: ApiResponse = await response.json()
-
-      if (result.success) {
-        setStudents(prev => prev.filter(student => student.id !== id))
+        const updatedStudents = students.filter(student => student.id !== id)
+        setStudents(updatedStudents)
         setSuccess('학생이 성공적으로 삭제되었습니다!')
         
         // 성공 메시지 자동 제거
         setTimeout(() => setSuccess(null), 3000)
       } else {
-        setError(result.error || '학생 삭제에 실패했습니다.')
+        setError('삭제할 학생을 찾을 수 없습니다.')
       }
     } catch (error) {
       console.error('Error deleting student:', error)
@@ -126,13 +126,20 @@ export default function AdminPage() {
    */
   const handleDownloadQR = async (student: Student) => {
     try {
-      const response = await fetch(`/api/qr/${student.id}`)
+      // localStorage에서 QR 코드 데이터 가져오기
+      const qrStorage = localStorage.getItem('qr-system-qrcodes')
+      const qrCodes = qrStorage ? JSON.parse(qrStorage) : {}
+      const qrDataUrl = qrCodes[student.id]
       
-      if (!response.ok) {
-        throw new Error('QR 코드 다운로드에 실패했습니다.')
+      if (!qrDataUrl) {
+        setError('QR 코드를 찾을 수 없습니다. QR 코드를 다시 생성해주세요.')
+        return
       }
 
+      // Data URL을 Blob으로 변환
+      const response = await fetch(qrDataUrl)
       const blob = await response.blob()
+      
       const url = window.URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.href = url

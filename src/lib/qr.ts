@@ -1,20 +1,46 @@
 import QRCode from 'qrcode'
-import fs from 'fs/promises'
-import path from 'path'
 import { Student } from '@/types'
-import { getStudents, saveStudents } from './storage'
+import { getStudents, saveStudents } from './storage-local'
 
-const QR_DIR = path.join(process.cwd(), 'public', 'qr-codes')
+const QR_STORAGE_KEY = 'qr-system-qrcodes'
+
+// 서버사이드용 메모리 저장소
+let serverQRMemoryData: Record<string, string> = {}
 
 /**
- * QR 코드 저장 디렉토리가 존재하는지 확인하고, 없으면 생성합니다.
- * @returns Promise<void>
+ * QR 코드 데이터를 읽어옵니다 (localStorage 또는 서버 메모리).
+ * @returns Record<string, string> 학생 ID를 키로 하는 QR 코드 Base64 데이터
  */
-export async function ensureQRDirectory(): Promise<void> {
+function getQRStorage(): Record<string, string> {
+  if (typeof window === 'undefined') {
+    // 서버사이드에서는 메모리 저장소 사용
+    return serverQRMemoryData
+  }
+  
   try {
-    await fs.access(QR_DIR)
-  } catch {
-    await fs.mkdir(QR_DIR, { recursive: true })
+    const data = localStorage.getItem(QR_STORAGE_KEY)
+    return data ? JSON.parse(data) : {}
+  } catch (error) {
+    console.error('Error reading QR storage:', error)
+    return {}
+  }
+}
+
+/**
+ * QR 코드 데이터를 저장합니다 (localStorage 또는 서버 메모리).
+ * @param qrData - QR 코드 데이터
+ */
+function setQRStorage(qrData: Record<string, string>): void {
+  if (typeof window === 'undefined') {
+    // 서버사이드에서는 메모리 저장소에 저장
+    serverQRMemoryData = { ...qrData }
+    return
+  }
+  
+  try {
+    localStorage.setItem(QR_STORAGE_KEY, JSON.stringify(qrData))
+  } catch (error) {
+    console.error('Error saving QR storage:', error)
   }
 }
 
@@ -28,50 +54,31 @@ export function getQRFileName(studentId: string): string {
 }
 
 /**
- * 학생 ID를 바탕으로 QR 코드 파일의 전체 경로를 생성합니다.
- * @param studentId - 학생 ID
- * @returns string QR 코드 파일의 절대 경로
- */
-export function getQRFilePath(studentId: string): string {
-  return path.join(QR_DIR, getQRFileName(studentId))
-}
-
-/**
- * 학생 ID를 바탕으로 QR 코드의 공개 URL을 생성합니다.
- * @param studentId - 학생 ID
- * @returns string QR 코드의 공개 URL
- */
-export function getQRPublicUrl(studentId: string): string {
-  return `/qr-codes/${getQRFileName(studentId)}`
-}
-
-/**
  * 학생 ID를 바탕으로 학생 페이지 URL을 생성합니다.
  * @param studentId - 학생 ID
  * @returns string 학생 페이지의 전체 URL
  */
 export function getStudentPageUrl(studentId: string): string {
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'
+  const baseUrl = process.env.VERCEL_URL 
+    ? `https://${process.env.VERCEL_URL}` 
+    : 'http://localhost:3000'
   return `${baseUrl}/student/${studentId}`
 }
 
 /**
  * 학생 정보를 바탕으로 QR 코드를 생성하고 저장합니다.
  * @param student - QR 코드를 생성할 학생 정보
- * @returns Promise<string> QR 코드의 공개 URL
+ * @returns Promise<string> QR 코드의 data URL
  * @throws Error QR 코드 생성에 실패할 경우
  */
 export async function generateQRCode(student: Student): Promise<string> {
-  await ensureQRDirectory()
-  
   const studentPageUrl = getStudentPageUrl(student.id)
-  const qrFilePath = getQRFilePath(student.id)
   
   try {
     // QR 코드 생성 옵션
     const qrOptions = {
       errorCorrectionLevel: 'M' as const,
-      type: 'png' as const,
+      type: 'image/png' as const,
       quality: 0.92,
       margin: 2,
       color: {
@@ -81,18 +88,24 @@ export async function generateQRCode(student: Student): Promise<string> {
       width: 256,
     }
     
-    await QRCode.toFile(qrFilePath, studentPageUrl, qrOptions)
+    // QR 코드를 Base64 데이터 URL로 생성
+    const qrDataUrl = await QRCode.toDataURL(studentPageUrl, qrOptions)
+    
+    // localStorage에 QR 코드 저장
+    const qrStorage = getQRStorage()
+    qrStorage[student.id] = qrDataUrl
+    setQRStorage(qrStorage)
     
     // 학생 데이터에 QR 코드 경로 업데이트
-    const students = await getStudents()
+    const students = getStudents()
     const studentIndex = students.findIndex(s => s.id === student.id)
     
     if (studentIndex !== -1) {
-      students[studentIndex].qrCodePath = getQRPublicUrl(student.id)
-      await saveStudents(students)
+      students[studentIndex].qrCodePath = qrDataUrl
+      saveStudents(students)
     }
     
-    return getQRPublicUrl(student.id)
+    return qrDataUrl
   } catch (error) {
     console.error('Error generating QR code:', error)
     throw new Error('QR 코드 생성에 실패했습니다.')
@@ -100,35 +113,37 @@ export async function generateQRCode(student: Student): Promise<string> {
 }
 
 /**
- * 학생 ID에 해당하는 QR 코드 파일을 삭제합니다.
+ * 학생 ID에 해당하는 QR 코드를 삭제합니다.
  * @param studentId - 삭제할 QR 코드의 학생 ID
- * @returns Promise<void>
  */
-export async function deleteQRCode(studentId: string): Promise<void> {
-  const qrFilePath = getQRFilePath(studentId)
+export function deleteQRCode(studentId: string): void {
+  const qrStorage = getQRStorage()
   
-  try {
-    await fs.access(qrFilePath)
-    await fs.unlink(qrFilePath)
-  } catch {
-    // 파일이 없으면 무시
-    console.warn(`QR file not found: ${qrFilePath}`)
+  if (qrStorage[studentId]) {
+    delete qrStorage[studentId]
+    setQRStorage(qrStorage)
   }
 }
 
 /**
- * 학생 ID에 해당하는 QR 코드 파일을 Buffer로 읽어옵니다.
+ * 학생 ID에 해당하는 QR 코드를 Buffer로 변환합니다.
  * @param studentId - 읽을 QR 코드의 학생 ID
- * @returns Promise<Buffer | null> QR 코드 파일의 Buffer 또는 null
+ * @returns Buffer | null QR 코드의 Buffer 또는 null
  */
-export async function getQRCodeBuffer(studentId: string): Promise<Buffer | null> {
-  const qrFilePath = getQRFilePath(studentId)
+export function getQRCodeBuffer(studentId: string): Buffer | null {
+  const qrStorage = getQRStorage()
+  const qrDataUrl = qrStorage[studentId]
+  
+  if (!qrDataUrl) {
+    return null
+  }
   
   try {
-    const buffer = await fs.readFile(qrFilePath)
-    return buffer
+    // data:image/png;base64, 부분 제거하고 Buffer로 변환
+    const base64Data = qrDataUrl.replace(/^data:image\/png;base64,/, '')
+    return Buffer.from(base64Data, 'base64')
   } catch (error) {
-    console.error('Error reading QR file:', error)
+    console.error('Error converting QR data to buffer:', error)
     return null
   }
 }
@@ -138,7 +153,7 @@ export async function getQRCodeBuffer(studentId: string): Promise<Buffer | null>
  * @returns Promise<void>
  */
 export async function regenerateAllQRCodes(): Promise<void> {
-  const students = await getStudents()
+  const students = getStudents()
   
   for (const student of students) {
     try {
