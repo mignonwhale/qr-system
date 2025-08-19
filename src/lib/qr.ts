@@ -59,9 +59,11 @@ export function getQRFileName(studentId: string): string {
  * @returns string 학생 페이지의 전체 URL
  */
 export function getStudentPageUrl(studentId: string): string {
-  const baseUrl = process.env.VERCEL_URL 
+  const baseUrl = process.env.VERCEL_URL
     ? `https://${process.env.VERCEL_URL}` 
     : 'http://localhost:3000'
+
+  console.log("baseUrl::: " , baseUrl )
   return `${baseUrl}/student/${studentId}`
 }
 
