@@ -64,6 +64,7 @@ export function getStudentPageUrl(studentId: string): string {
     : 'http://localhost:3000'
 
   console.log("baseUrl::: " , baseUrl )
+  console.log("full url::: " , `${baseUrl}/student/${studentId}` )
   return `${baseUrl}/student/${studentId}`
 }
 
