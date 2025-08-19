@@ -59,11 +59,22 @@ export function getQRFileName(studentId: string): string {
  * @returns string 학생 페이지의 전체 URL
  */
 export function getStudentPageUrl(studentId: string): string {
-  const baseUrl = process.env.VERCEL_URL
-    ? `https://${process.env.VERCEL_URL}` 
-    : 'http://localhost:3000'
+  // VERCEL_URL은 서버사이드에서만 사용 가능
+  // 클라이언트에서는 window.location 사용
+  let baseUrl: string
+  
+  if (typeof window !== 'undefined') {
+    // 클라이언트 사이드
+    baseUrl = `${window.location.protocol}//${window.location.host}`
+  } else {
+    // 서버 사이드 
+    baseUrl = process.env.VERCEL_URL 
+      ? `https://${process.env.VERCEL_URL}`
+      : 'http://localhost:3000'
+  }
 
   console.log("baseUrl::: " , baseUrl )
+  console.log("VERCEL_URL::: " , process.env.VERCEL_URL )
   console.log("full url::: " , `${baseUrl}/student/${studentId}` )
   return `${baseUrl}/student/${studentId}`
 }
