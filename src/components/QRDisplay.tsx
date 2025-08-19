@@ -1,8 +1,8 @@
 'use client'
 
 import { Student } from '@/types'
-import Card, { CardHeader, CardContent } from './ui/Card'
-import Button from './ui/Button'
+import {Card,  CardHeader, CardContent } from './ui/Card'
+import {Button} from './ui/Button'
 
 interface QRDisplayProps {
   student: Student
@@ -36,10 +36,6 @@ export default function QRDisplay({ student, onDownload }: QRDisplayProps) {
               />
               
               <div className="text-sm text-gray-600">
-                <p><strong>학번:</strong> {student.studentId}</p>
-                {student.department && (
-                  <p><strong>학과:</strong> {student.department}</p>
-                )}
                 <p className="mt-2 text-xs break-all">
                   <strong>링크:</strong> {studentPageUrl}
                 </p>

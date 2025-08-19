@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
-import Card, { CardHeader, CardContent } from '@/components/ui/Card'
+import {Card, CardHeader, CardContent } from '@/components/ui/Card'
 import { Student, ApiResponse } from '@/types'
 
 /**
